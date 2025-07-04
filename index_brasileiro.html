@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Valverde Premia</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px; }
+    h1 { text-align: center; color: #333; }
+    .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
+    button { margin-top: 15px; padding: 10px 15px; border: none; background: #4CAF50; color: #fff; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #45a049; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; }
+    .expirado { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Valverde Premia</h1>
+
+    <h3>Cadastrar Cliente</h3>
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" />
+
+    <label for="cpf">CPF:</label>
+    <input type="text" id="cpf" />
+
+    <label for="telefone">Telefone:</label>
+    <input type="text" id="telefone" />
+
+    <label for="pontos">Pontos:</label>
+    <input type="number" id="pontos" />
+
+    <label for="data">Data de Cadastro:</label>
+    <input type="date" id="data" />
+
+    <button onclick="cadastrarCliente()">Cadastrar</button>
+
+    <h3>Consultar Cliente</h3>
+    <input type="text" id="consulta" placeholder="Digite CPF ou Nome" />
+    <button onclick="consultarCliente()">Consultar</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Telefone</th>
+          <th>Pontos</th>
+          <th>Data Crédito</th>
+          <th>Vencimento</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaClientes"></tbody>
+    </table>
+  </div>
+
+  <script>
+    let clientes = JSON.parse(localStorage.getItem('clientesValverde')) || [];
+
+    function cadastrarCliente() {
+      const nome = document.getElementById('nome').value.trim();
+      const cpf = document.getElementById('cpf').value.trim();
+      const telefone = document.getElementById('telefone').value.trim();
+      const pontos = parseInt(document.getElementById('pontos').value.trim());
+      const data = document.getElementById('data').value;
+
+      if (!nome || !cpf || !pontos || !data) {
+        alert('Preencha todos os campos obrigatórios.');
+        return;
+      }
+
+      const vencimento = new Date(data);
+      vencimento.setMonth(vencimento.getMonth() + 24);
+
+      const idx = clientes.findIndex(c => c.cpf === cpf);
+      if (idx !== -1) {
+        clientes[idx].pontos += pontos;
+        clientes[idx].data = data;
+        clientes[idx].vencimento = formatDate(vencimento.toISOString().split('T')[0]);
+        clientes[idx].status = '';
+        clientes[idx].dataZerado = '';
+      } else {
+        clientes.push({
+          nome,
+          cpf,
+          telefone,
+          pontos,
+          data,
+          vencimento: formatDate(vencimento.toISOString().split('T')[0]),
+          status: '',
+          dataZerado: ''
+        });
+      }
+
+      localStorage.setItem('clientesValverde', JSON.stringify(clientes));
+      alert('Cliente cadastrado com sucesso!');
+
+      document.getElementById('nome').value = '';
+      document.getElementById('cpf').value = '';
+      document.getElementById('telefone').value = '';
+      document.getElementById('pontos').value = '';
+      document.getElementById('data').value = '';
+
+      mostrarClientes();
+    }
+
+    function consultarCliente() {
+      const consulta = document.getElementById('consulta').value.trim().toLowerCase();
+      const tabela = document.getElementById('tabelaClientes');
+      tabela.innerHTML = '';
+
+      const hoje = new Date().toISOString().split('T')[0];
+      const filtrados = clientes.filter(c => c.nome.toLowerCase().includes(consulta) || c.cpf.includes(consulta));
+
+      filtrados.forEach(c => {
+        if (c.vencimento < hoje && c.pontos > 0) {
+          c.pontos = 0;
+          c.status = 'Pontos zerados em';
+          c.dataZerado = hoje;
+          localStorage.setItem('clientesValverde', JSON.stringify(clientes));
+        }
+
+        const vencimentoFormat = c.vencimento;
+        const statusDisplay = c.status
+          ? `<span class="expirado">${c.status} ${formatDate(c.dataZerado)}</span>`
+          : vencimentoFormat < hoje
+            ? '<span class="expirado">Expirado</span>'
+            : vencimentoFormat;
+
+        tabela.innerHTML += `<tr>
+          <td>${c.nome}</td>
+          <td>${c.cpf}</td>
+          <td>${c.telefone}</td>
+          <td>${c.pontos}</td>
+          <td>${formatDate(c.data)}</td>
+          <td>${statusDisplay}</td>
+          <td>${c.status ? formatDate(c.dataZerado) : ''}</td>
+        </tr>`;
+      });
+    }
+
+    function mostrarClientes() {
+      const tabela = document.getElementById('tabelaClientes');
+      tabela.innerHTML = '';
+      const hoje = new Date().toISOString().split('T')[0];
+
+      clientes.forEach(c => {
+        if (c.vencimento < hoje && c.pontos > 0) {
+          c.pontos = 0;
+          c.status = 'Pontos zerados em';
+          c.dataZerado = hoje;
+          localStorage.setItem('clientesValverde', JSON.stringify(clientes));
+        }
+
+        const vencimentoFormat = c.vencimento;
+        const statusDisplay = c.status
+          ? `<span class="expirado">${c.status} ${formatDate(c.dataZerado)}</span>`
+          : vencimentoFormat < hoje
+            ? '<span class="expirado">Expirado</span>'
+            : vencimentoFormat;
+
+        tabela.innerHTML += `<tr>
+          <td>${c.nome}</td>
+          <td>${c.cpf}</td>
+          <td>${c.telefone}</td>
+          <td>${c.pontos}</td>
+          <td>${formatDate(c.data)}</td>
+          <td>${statusDisplay}</td>
+          <td>${c.status ? formatDate(c.dataZerado) : ''}</td>
+        </tr>`;
+      });
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return '';
+      const d = new Date(dateString);
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    }
+
+    mostrarClientes();
+  </script>
+</body>
+</html>
